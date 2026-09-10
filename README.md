@@ -2,7 +2,10 @@
 
 **[▶ Live demo](https://viraj-vekariya.github.io/06-ai-annotation-serving/)** — real predictions on real test messages, with a live abstention-threshold slider.
 
-**[⇧ Deploy it yourself](https://render.com/deploy?repo=https://github.com/viraj-vekariya/06-ai-annotation-serving)** — one click builds `render.yaml` on Render's free tier: the classifier, with MiniLM shipped as a TorchScript graph. No card, no configuration.
+**[⇧ Deploy your own copy](https://render.com/deploy?repo=https://github.com/viraj-vekariya/06-ai-annotation-serving)** — one click builds `render.yaml` on Render's free tier: the classifier, with MiniLM shipped as a TorchScript graph. No card, no configuration.
+
+**[◆ Live API](https://annotation-service.onrender.com)** — the classifier itself. POST to `/classify`; `/metrics` reports `encoder_backend: traced`, which is the 512 MB fit described below.
+Free tier, so a cold instance takes ~50s to wake.
 
 **Pay humans to label support tickets, or automate it?** A retrieval-plus-LLM annotation
 pipeline over **13,083 real customer-support messages across 77 intents**, with a four-arm
