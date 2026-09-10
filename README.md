@@ -2,12 +2,14 @@
 
 **[▶ Live demo](https://viraj-vekariya.github.io/06-ai-annotation-serving/)** — real predictions on real test messages, with a live abstention-threshold slider.
 
+**[⇧ Deploy it yourself](https://render.com/deploy?repo=https://github.com/viraj-vekariya/06-ai-annotation-serving)** — one click builds `render.yaml` on Render's free tier: the classifier, with MiniLM shipped as a TorchScript graph. No card, no configuration.
+
 **Pay humans to label support tickets, or automate it?** A retrieval-plus-LLM annotation
 pipeline over **13,083 real customer-support messages across 77 intents**, with a four-arm
 ablation, calibration, a derived abstention gate, distillation, a cost frontier, and a
 deployed API.
 
-**~2,900 lines · 45 tests passing · verified on CPython 3.13.9, MiniLM, flan-t5-base**
+**~3,100 lines · 46 tests passing · verified on CPython 3.13.9, MiniLM, flan-t5-base**
 
 Every number was measured on a run and written to `outputs/results.json`. Nothing is
 estimated.
@@ -158,7 +160,7 @@ forever.
 | `src/` | ~1,300 | retriever, LM scorer, fusion, ablation, calibration, gate, student, distillation, cost |
 | `serve/` | ~380 | FastAPI, three health probes, schemas |
 | `dashboard/` | 271 | the live classifier and threshold UI |
-| `tests/` | ~470 | 45 tests |
+| `tests/` | ~500 | 46 tests |
 | `data/` + `infra/` + CI | ~430 | fetcher, Dockerfile, compose, Fly, GitHub Actions |
 
 ## Run it
@@ -180,6 +182,48 @@ make docker
 ```
 
 No API key is needed for anything: MiniLM and flan-t5-base both run locally on CPU.
+
+## Deployment: fitting 512 MB
+
+The free tier gives 512 MB of RAM, so the question is not "does it run" but "how much
+room is left when it does". Measuring the process rather than estimating it changed the
+image:
+
+| | resident |
+|---|---|
+| baseline python | 12 MB |
+| + numpy | 32 MB |
+| + torch | 197 MB |
+| + **transformers** | **412 MB** |
+| + MiniLM | 417 MB |
+| + the 10,003-vector index | 417 MB |
+| + one real query | 456 MB |
+
+456 MB fits, with 56 MB spare — not enough to survive a second concurrent request. And
+the table says the model is not the problem: `transformers` costs 215 MB as a *library*,
+before it loads anything, which is more than MiniLM itself.
+
+It is needed to **build** the artifacts and not to **run** them. A traced TorchScript
+graph needs only torch, and the tokenizer is available standalone from `tokenizers` — the
+same Rust library `transformers` wraps. So `tools/export_encoder.py` traces MiniLM at
+image-build time and the runtime stage never installs `transformers` at all:
+
+    334 MB used, 178 MB headroom
+
+Two things had to be proved rather than assumed:
+
+- **The traced graph is the same function.** An encoder that silently drifted would
+  change every prediction while every test still passed. The exporter compares against
+  the checkpoint before it writes anything, and CI re-derives it on every push. Measured
+  difference: **0.00e+00**.
+- **The rebuilt index is the measured index.** `index.npz` is 14 MB of derived floats and
+  is not in git, so the build regenerates it — which is exactly where a wrong encoder or
+  a shuffled corpus would slip through. `tools/build_index.py` replays the headline
+  number and **fails the build** unless it reproduces 0.8920 top-1 on the same 1,500 test
+  messages. The rebuilt matrix is bit-identical to the original.
+
+A side effect worth having: the runtime image has no Hugging Face dependency at all, so a
+cold start cannot be slowed or failed by someone else's outage.
 
 ## Known limits
 
