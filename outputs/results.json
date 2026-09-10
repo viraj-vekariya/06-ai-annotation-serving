@@ -1,0 +1,633 @@
+{
+  "project": "AI Annotation & Served Inference",
+  "role": "CV2 / Data Science + Business Analytics - applied ML and MLOps",
+  "generated_at": "2026-09-10T07:50:12",
+  "data": {
+    "train_rows": 10003,
+    "test_rows": 3080,
+    "total_rows": 13083,
+    "labels": 77,
+    "examples_per_label_mean": 129.9,
+    "examples_per_label_min": 35,
+    "examples_per_label_max": 187,
+    "rarest_label": "contactless_not_working",
+    "commonest_label": "card_payment_fee_charged",
+    "mean_words": 11.9
+  },
+  "retrieval": {
+    "ceiling": {
+      "recall_at_1": 0.892,
+      "recall_at_3": 0.9773,
+      "recall_at_5": 0.988,
+      "recall_at_8": 0.99,
+      "n": 1500
+    },
+    "top1_accuracy": 0.892,
+    "model": "sentence-transformers/all-MiniLM-L6-v2"
+  },
+  "ablation": {
+    "shortlist_ceiling": {
+      "recall_at_1": 0.892,
+      "recall_at_3": 0.9773,
+      "recall_at_5": 0.988,
+      "recall_at_8": 0.99,
+      "n": 1500
+    },
+    "arms": [
+      {
+        "arm": "A",
+        "description": "retriever only (kNN vote over embeddings, no LM)",
+        "accuracy": 0.892,
+        "n": 1500,
+        "lm_calls": 0,
+        "seconds": 2.0,
+        "evaluated_on_full_test_set": true
+      },
+      {
+        "arm": "B",
+        "description": "LM only (LM re-ranks the shortlist, retriever ranking discarded)",
+        "accuracy": 0.604,
+        "n": 1500,
+        "lm_calls": 4036,
+        "seconds": 74.6,
+        "evaluated_on_full_test_set": true
+      },
+      {
+        "arm": "C",
+        "description": "fusion (alpha=1.0, both signals z-scored per example)",
+        "accuracy": 0.892,
+        "n": 1500,
+        "lm_calls": 4036,
+        "seconds": 74.9,
+        "evaluated_on_full_test_set": true
+      },
+      {
+        "arm": "D",
+        "description": "LM with 3 nearest-neighbour examples in the prompt (subset of 300)",
+        "accuracy": 0.8967,
+        "n": 300,
+        "lm_calls": 703,
+        "seconds": 19.3,
+        "evaluated_on_full_test_set": false
+      }
+    ],
+    "alpha_sweep": {
+      "sweep": [
+        {
+          "alpha": 0.0,
+          "accuracy": 0.604
+        },
+        {
+          "alpha": 0.1,
+          "accuracy": 0.6253
+        },
+        {
+          "alpha": 0.2,
+          "accuracy": 0.648
+        },
+        {
+          "alpha": 0.3,
+          "accuracy": 0.6653
+        },
+        {
+          "alpha": 0.4,
+          "accuracy": 0.6993
+        },
+        {
+          "alpha": 0.5,
+          "accuracy": 0.83
+        },
+        {
+          "alpha": 0.6,
+          "accuracy": 0.8853
+        },
+        {
+          "alpha": 0.7,
+          "accuracy": 0.8893
+        },
+        {
+          "alpha": 0.8,
+          "accuracy": 0.8893
+        },
+        {
+          "alpha": 0.9,
+          "accuracy": 0.8887
+        },
+        {
+          "alpha": 1.0,
+          "accuracy": 0.892
+        }
+      ],
+      "best": {
+        "alpha": 1.0,
+        "accuracy": 0.892
+      },
+      "retriever_only": {
+        "alpha": 1.0,
+        "accuracy": 0.892
+      },
+      "lm_only": {
+        "alpha": 0.0,
+        "accuracy": 0.604
+      },
+      "fusion_beats_retriever": false,
+      "fusion_beats_lm": true,
+      "gain_over_retriever": 0.0,
+      "gain_over_lm": 0.288
+    },
+    "few_shot_comparison": {
+      "arm_d_accuracy_on_subset": 0.8967,
+      "arm_a_accuracy_on_same_subset": 0.9067,
+      "few_shot_helps": false,
+      "subset_size": 300
+    },
+    "winner": {
+      "arm": "A",
+      "description": "retriever only (kNN vote over embeddings, no LM)",
+      "accuracy": 0.892
+    },
+    "verdict": "The retriever alone wins at 0.8920. The language model does not earn its 4,036 forward passes: on its own it scores 0.6040, and fusing it in reaches 0.8920. Ship the retriever."
+  },
+  "calibration": {
+    "temperature": 0.173,
+    "ece_before": 0.2459,
+    "ece_after": 0.0233,
+    "ece_reduction_pct": 90.51,
+    "mean_confidence_before": 0.6475,
+    "mean_confidence_after": 0.9043,
+    "accuracy": 0.892,
+    "n": 1500,
+    "direction": "under-confident (T<1 sharpens it)",
+    "reliability": [
+      {
+        "bin": "0.2-0.3",
+        "n": 14,
+        "confidence": 0.2686,
+        "accuracy": 0.2143,
+        "gap": -0.0543
+      },
+      {
+        "bin": "0.3-0.4",
+        "n": 31,
+        "confidence": 0.3487,
+        "accuracy": 0.5161,
+        "gap": 0.1674
+      },
+      {
+        "bin": "0.4-0.5",
+        "n": 42,
+        "confidence": 0.4539,
+        "accuracy": 0.4286,
+        "gap": -0.0253
+      },
+      {
+        "bin": "0.5-0.6",
+        "n": 40,
+        "confidence": 0.5477,
+        "accuracy": 0.6,
+        "gap": 0.0523
+      },
+      {
+        "bin": "0.6-0.7",
+        "n": 62,
+        "confidence": 0.6538,
+        "accuracy": 0.5806,
+        "gap": -0.0731
+      },
+      {
+        "bin": "0.7-0.8",
+        "n": 72,
+        "confidence": 0.7554,
+        "accuracy": 0.6667,
+        "gap": -0.0887
+      },
+      {
+        "bin": "0.8-0.9",
+        "n": 113,
+        "confidence": 0.8567,
+        "accuracy": 0.8584,
+        "gap": 0.0017
+      },
+      {
+        "bin": "0.9-1.0",
+        "n": 1126,
+        "confidence": 0.9851,
+        "accuracy": 0.9734,
+        "gap": -0.0117
+      }
+    ]
+  },
+  "abstention": {
+    "chosen": {
+      "threshold": 0.7093,
+      "coverage": 0.8693,
+      "precision": 0.9502,
+      "recall_of_correct": 0.926,
+      "auto_accepted": 1304,
+      "sent_to_review": 196,
+      "errors_shipped": 65,
+      "target_precision": 0.95,
+      "target_achieved": true
+    },
+    "targets": [
+      {
+        "threshold": 0.3434,
+        "coverage": 0.984,
+        "precision": 0.9004,
+        "recall_of_correct": 0.9933,
+        "auto_accepted": 1476,
+        "sent_to_review": 24,
+        "errors_shipped": 147,
+        "target_precision": 0.9,
+        "target_achieved": true
+      },
+      {
+        "threshold": 0.7093,
+        "coverage": 0.8693,
+        "precision": 0.9502,
+        "recall_of_correct": 0.926,
+        "auto_accepted": 1304,
+        "sent_to_review": 196,
+        "errors_shipped": 65,
+        "target_precision": 0.95,
+        "target_achieved": true
+      },
+      {
+        "threshold": 0.8596,
+        "coverage": 0.7873,
+        "precision": 0.9704,
+        "recall_of_correct": 0.8565,
+        "auto_accepted": 1181,
+        "sent_to_review": 319,
+        "errors_shipped": 35,
+        "target_precision": 0.97,
+        "target_achieved": true
+      },
+      {
+        "threshold": 0.9699,
+        "coverage": 0.6113,
+        "precision": 0.9902,
+        "recall_of_correct": 0.6786,
+        "auto_accepted": 917,
+        "sent_to_review": 583,
+        "errors_shipped": 9,
+        "target_precision": 0.99,
+        "target_achieved": true
+      }
+    ],
+    "operating_curve": [
+      {
+        "threshold": 0.0,
+        "coverage": 1.0,
+        "precision": 0.892,
+        "n_auto": 1500
+      },
+      {
+        "threshold": 0.0417,
+        "coverage": 1.0,
+        "precision": 0.892,
+        "n_auto": 1500
+      },
+      {
+        "threshold": 0.0833,
+        "coverage": 1.0,
+        "precision": 0.892,
+        "n_auto": 1500
+      },
+      {
+        "threshold": 0.125,
+        "coverage": 1.0,
+        "precision": 0.892,
+        "n_auto": 1500
+      },
+      {
+        "threshold": 0.1667,
+        "coverage": 1.0,
+        "precision": 0.892,
+        "n_auto": 1500
+      },
+      {
+        "threshold": 0.2083,
+        "coverage": 1.0,
+        "precision": 0.892,
+        "n_auto": 1500
+      },
+      {
+        "threshold": 0.25,
+        "coverage": 0.998,
+        "precision": 0.8931,
+        "n_auto": 1497
+      },
+      {
+        "threshold": 0.2917,
+        "coverage": 0.992,
+        "precision": 0.8978,
+        "n_auto": 1488
+      },
+      {
+        "threshold": 0.3333,
+        "coverage": 0.9853,
+        "precision": 0.8999,
+        "n_auto": 1478
+      },
+      {
+        "threshold": 0.375,
+        "coverage": 0.9727,
+        "precision": 0.9061,
+        "n_auto": 1459
+      },
+      {
+        "threshold": 0.4167,
+        "coverage": 0.9673,
+        "precision": 0.9083,
+        "n_auto": 1451
+      },
+      {
+        "threshold": 0.4583,
+        "coverage": 0.9553,
+        "precision": 0.9142,
+        "n_auto": 1433
+      },
+      {
+        "threshold": 0.5,
+        "coverage": 0.942,
+        "precision": 0.9207,
+        "n_auto": 1413
+      },
+      {
+        "threshold": 0.5417,
+        "coverage": 0.9287,
+        "precision": 0.9268,
+        "n_auto": 1393
+      },
+      {
+        "threshold": 0.5833,
+        "coverage": 0.9193,
+        "precision": 0.9289,
+        "n_auto": 1379
+      },
+      {
+        "threshold": 0.625,
+        "coverage": 0.9053,
+        "precision": 0.9345,
+        "n_auto": 1358
+      },
+      {
+        "threshold": 0.6667,
+        "coverage": 0.892,
+        "precision": 0.938,
+        "n_auto": 1338
+      },
+      {
+        "threshold": 0.7083,
+        "coverage": 0.87,
+        "precision": 0.9502,
+        "n_auto": 1305
+      },
+      {
+        "threshold": 0.75,
+        "coverage": 0.8527,
+        "precision": 0.9547,
+        "n_auto": 1279
+      },
+      {
+        "threshold": 0.7917,
+        "coverage": 0.832,
+        "precision": 0.9591,
+        "n_auto": 1248
+      },
+      {
+        "threshold": 0.8333,
+        "coverage": 0.806,
+        "precision": 0.9694,
+        "n_auto": 1209
+      },
+      {
+        "threshold": 0.875,
+        "coverage": 0.7787,
+        "precision": 0.9709,
+        "n_auto": 1168
+      },
+      {
+        "threshold": 0.9167,
+        "coverage": 0.7313,
+        "precision": 0.9763,
+        "n_auto": 1097
+      },
+      {
+        "threshold": 0.9583,
+        "coverage": 0.6547,
+        "precision": 0.9837,
+        "n_auto": 982
+      },
+      {
+        "threshold": 1.0,
+        "coverage": 0.3073,
+        "precision": 0.9978,
+        "n_auto": 461
+      }
+    ]
+  },
+  "distillation": {
+    "teacher_accuracy": 0.892,
+    "neural_student": {
+      "architecture": "MLP over frozen embeddings",
+      "parameters": 118349,
+      "train_examples": 10003,
+      "teacher_accuracy": 0.892,
+      "student_accuracy": 0.8787,
+      "agreement_with_teacher": 0.9393,
+      "beats_teacher": false,
+      "gap": -0.0133,
+      "epochs": 40,
+      "seconds": 2.0
+    },
+    "linear_student": {
+      "architecture": "multinomial logistic regression",
+      "parameters": 29645,
+      "train_examples": 10003,
+      "teacher_accuracy": 0.892,
+      "student_accuracy": 0.882,
+      "agreement_with_teacher": 0.9427,
+      "beats_teacher": false,
+      "gap": -0.01,
+      "epochs": 40,
+      "seconds": 0.8
+    },
+    "mlp_beats_linear": false,
+    "best_student": "multinomial logistic regression",
+    "verdict": "The multinomial logistic regression (29,645 params) reaches 0.8820 against the teacher's 0.8920 - 98.9% of the teacher's accuracy, -0.0100. Whether that trade is worth taking is a cost question, not an accuracy question; see src/cost.py."
+  },
+  "learning_curve": [
+    {
+      "fraction": 0.1,
+      "train_examples": 1000,
+      "accuracy": 0.5747,
+      "still_improving": true
+    },
+    {
+      "fraction": 0.25,
+      "train_examples": 2500,
+      "accuracy": 0.8247,
+      "still_improving": true
+    },
+    {
+      "fraction": 0.5,
+      "train_examples": 5001,
+      "accuracy": 0.8553,
+      "still_improving": true
+    },
+    {
+      "fraction": 0.75,
+      "train_examples": 7502,
+      "accuracy": 0.8733,
+      "still_improving": true
+    },
+    {
+      "fraction": 1.0,
+      "train_examples": 10003,
+      "accuracy": 0.8813,
+      "still_improving": true
+    }
+  ],
+  "cost": {
+    "assumptions": {
+      "human_seconds_per_item": 30.0,
+      "human_hourly_usd": 10.0,
+      "human_cost_per_1k_usd": 83.33,
+      "compute_hourly_usd": 0.6,
+      "lm_items_per_second": 20.0,
+      "embed_items_per_second": 850.0,
+      "volume_priced_thousands": 100.0
+    },
+    "options": [
+      {
+        "name": "retriever only",
+        "description": "kNN vote over MiniLM embeddings; no language model",
+        "accuracy": 0.892,
+        "coverage": 1.0,
+        "machine_cost_per_1k": 0.000228,
+        "human_cost_per_1k": 0.0,
+        "total_cost_per_1k": 0.000228,
+        "needs_transformer_at_serving": true,
+        "effective_accuracy": 0.892
+      },
+      {
+        "name": "distilled student",
+        "description": "MLP over cached embeddings; no index, no LM at serving",
+        "accuracy": 0.882,
+        "coverage": 1.0,
+        "machine_cost_per_1k": 0.000284,
+        "human_cost_per_1k": 0.0,
+        "total_cost_per_1k": 0.000284,
+        "needs_transformer_at_serving": true,
+        "effective_accuracy": 0.882
+      },
+      {
+        "name": "LM only",
+        "description": "flan-t5-base scores the shortlist, retriever ranking discarded",
+        "accuracy": 0.604,
+        "coverage": 1.0,
+        "machine_cost_per_1k": 0.008366,
+        "human_cost_per_1k": 0.0,
+        "total_cost_per_1k": 0.008366,
+        "needs_transformer_at_serving": true,
+        "effective_accuracy": 0.604
+      },
+      {
+        "name": "retriever + LM re-rank",
+        "description": "shortlist then score 8 candidates with flan-t5-base",
+        "accuracy": 0.892,
+        "coverage": 1.0,
+        "machine_cost_per_1k": 0.008562,
+        "human_cost_per_1k": 0.0,
+        "total_cost_per_1k": 0.008562,
+        "needs_transformer_at_serving": true,
+        "effective_accuracy": 0.892
+      },
+      {
+        "name": "retriever + abstention gate",
+        "description": "auto-accept above the threshold (95% precision), route the rest to a person",
+        "accuracy": 0.9502,
+        "coverage": 0.8693,
+        "machine_cost_per_1k": 0.000228,
+        "human_cost_per_1k": 10.8889,
+        "total_cost_per_1k": 10.889117,
+        "needs_transformer_at_serving": true,
+        "effective_accuracy": 0.9567
+      },
+      {
+        "name": "human annotation",
+        "description": "every item labelled by a person",
+        "accuracy": 1.0,
+        "coverage": 0.0,
+        "machine_cost_per_1k": 0.0,
+        "human_cost_per_1k": 83.3333,
+        "total_cost_per_1k": 83.333333,
+        "needs_transformer_at_serving": false,
+        "effective_accuracy": 1.0
+      }
+    ],
+    "frontier": [
+      {
+        "name": "retriever only",
+        "description": "kNN vote over MiniLM embeddings; no language model",
+        "accuracy": 0.892,
+        "coverage": 1.0,
+        "machine_cost_per_1k": 0.000228,
+        "human_cost_per_1k": 0.0,
+        "total_cost_per_1k": 0.000228,
+        "needs_transformer_at_serving": true,
+        "effective_accuracy": 0.892
+      },
+      {
+        "name": "retriever + abstention gate",
+        "description": "auto-accept above the threshold (95% precision), route the rest to a person",
+        "accuracy": 0.9502,
+        "coverage": 0.8693,
+        "machine_cost_per_1k": 0.000228,
+        "human_cost_per_1k": 10.8889,
+        "total_cost_per_1k": 10.889117,
+        "needs_transformer_at_serving": true,
+        "effective_accuracy": 0.9567
+      },
+      {
+        "name": "human annotation",
+        "description": "every item labelled by a person",
+        "accuracy": 1.0,
+        "coverage": 0.0,
+        "machine_cost_per_1k": 0.0,
+        "human_cost_per_1k": 83.3333,
+        "total_cost_per_1k": 83.333333,
+        "needs_transformer_at_serving": false,
+        "effective_accuracy": 1.0
+      }
+    ],
+    "dominated": [
+      "retriever + LM re-rank",
+      "LM only",
+      "distilled student"
+    ],
+    "human_cost_per_1k": 83.333333,
+    "cheapest_automated": {
+      "name": "retriever only",
+      "cost_per_1k": 0.000228,
+      "human_cost_per_1k": 83.333333,
+      "ratio_vs_human": 365497.1,
+      "accuracy_given_up": 0.108,
+      "note": "The ratio is enormous because the automated options cost a fraction of a cent per 1,000 items - compute is essentially free at this scale. The real trade is therefore ACCURACY, not cost, which is why the gated option exists: it buys back precision with human review and is the only automated option that is not dominated on quality."
+    },
+    "at_volume": {
+      "100k_items": {
+        "human annotation": 8333.33,
+        "retriever only": 0.02,
+        "retriever + LM re-rank": 0.86,
+        "LM only": 0.84,
+        "distilled student": 0.03,
+        "retriever + abstention gate": 1088.91
+      }
+    }
+  },
+  "tests": "45 passed in 6.06s",
+  "seconds": 75.9
+}

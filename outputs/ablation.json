@@ -1,0 +1,123 @@
+{
+  "shortlist_ceiling": {
+    "recall_at_1": 0.9025,
+    "recall_at_3": 0.9788,
+    "recall_at_5": 0.9862,
+    "recall_at_8": 0.9875,
+    "n": 800
+  },
+  "arms": [
+    {
+      "arm": "A",
+      "description": "retriever only (kNN vote over embeddings, no LM)",
+      "accuracy": 0.9025,
+      "n": 800,
+      "lm_calls": 0,
+      "seconds": 1.1,
+      "evaluated_on_full_test_set": true
+    },
+    {
+      "arm": "B",
+      "description": "LM only (LM re-ranks the shortlist, retriever ranking discarded)",
+      "accuracy": 0.6412,
+      "n": 800,
+      "lm_calls": 1952,
+      "seconds": 40.1,
+      "evaluated_on_full_test_set": true
+    },
+    {
+      "arm": "C",
+      "description": "fusion (alpha=1.0, both signals z-scored per example)",
+      "accuracy": 0.9025,
+      "n": 800,
+      "lm_calls": 1952,
+      "seconds": 40.3,
+      "evaluated_on_full_test_set": true
+    },
+    {
+      "arm": "D",
+      "description": "LM with 3 nearest-neighbour examples in the prompt (subset of 200)",
+      "accuracy": 0.905,
+      "n": 200,
+      "lm_calls": 429,
+      "seconds": 12.5,
+      "evaluated_on_full_test_set": false
+    }
+  ],
+  "alpha_sweep": {
+    "sweep": [
+      {
+        "alpha": 0.0,
+        "accuracy": 0.6412
+      },
+      {
+        "alpha": 0.1,
+        "accuracy": 0.6663
+      },
+      {
+        "alpha": 0.2,
+        "accuracy": 0.6887
+      },
+      {
+        "alpha": 0.3,
+        "accuracy": 0.7
+      },
+      {
+        "alpha": 0.4,
+        "accuracy": 0.7188
+      },
+      {
+        "alpha": 0.5,
+        "accuracy": 0.845
+      },
+      {
+        "alpha": 0.6,
+        "accuracy": 0.8962
+      },
+      {
+        "alpha": 0.7,
+        "accuracy": 0.8988
+      },
+      {
+        "alpha": 0.8,
+        "accuracy": 0.8988
+      },
+      {
+        "alpha": 0.9,
+        "accuracy": 0.9
+      },
+      {
+        "alpha": 1.0,
+        "accuracy": 0.9025
+      }
+    ],
+    "best": {
+      "alpha": 1.0,
+      "accuracy": 0.9025
+    },
+    "retriever_only": {
+      "alpha": 1.0,
+      "accuracy": 0.9025
+    },
+    "lm_only": {
+      "alpha": 0.0,
+      "accuracy": 0.6412
+    },
+    "fusion_beats_retriever": false,
+    "fusion_beats_lm": true,
+    "gain_over_retriever": 0.0,
+    "gain_over_lm": 0.2613
+  },
+  "few_shot_comparison": {
+    "arm_d_accuracy_on_subset": 0.905,
+    "arm_a_accuracy_on_same_subset": 0.93,
+    "few_shot_helps": false,
+    "subset_size": 200
+  },
+  "winner": {
+    "arm": "A",
+    "description": "retriever only (kNN vote over embeddings, no LM)",
+    "accuracy": 0.9025
+  },
+  "verdict": "The retriever alone wins at 0.9025. The language model does not earn its 1,952 forward passes: on its own it scores 0.6412, and fusing it in reaches 0.9025. Ship the retriever."
+}

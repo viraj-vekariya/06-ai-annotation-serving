@@ -1,0 +1,17 @@
+services:
+  annotation:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile
+    ports: ["8600:8600"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8600/health/ready',timeout=3)"]
+      interval: 15s
+      timeout: 4s
+      retries: 6
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G

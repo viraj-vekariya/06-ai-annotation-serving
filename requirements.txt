@@ -1,0 +1,13 @@
+# Retrieval and the language model
+transformers>=4.40
+torch>=2.2
+numpy>=1.26
+scikit-learn>=1.4
+
+# Serving
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+
+# Tests
+pytest>=8.0
