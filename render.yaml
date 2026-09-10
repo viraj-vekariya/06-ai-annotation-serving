@@ -1,0 +1,23 @@
+# Render blueprint, free tier (512 MB).
+#
+# Measured footprint: 456 MB with torch + transformers + MiniLM + the 10,003-vector index
+# and one real query. That fits, but with only ~56MB of headroom - and 215MB of it is the
+# `transformers` import alone, not the model.
+#
+# So the serving path uses a TorchScript-traced encoder and the standalone `tokenizers`
+# library, skipping the transformers import entirely. See serve/light_embedder.py.
+services:
+  - type: web
+    name: annotation-service
+    runtime: docker
+    dockerfilePath: ./infra/Dockerfile
+    dockerContext: .
+    plan: free
+    region: singapore
+    healthCheckPath: /health/ready
+    autoDeploy: true
+    envVars:
+      - key: ANNOTATION_ARTIFACTS
+        value: /app/artifacts
+      - key: WEB_CONCURRENCY
+        value: "1"

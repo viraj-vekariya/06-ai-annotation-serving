@@ -47,6 +47,7 @@ class Service:
         self.temperature = 1.0
         self.threshold = 0.5
         self.version = "unknown"
+        self.encoder_backend = "unknown"
         self.requests = 0
         self.abstentions = 0
         self.latency_ms: List[float] = []
@@ -69,8 +70,14 @@ class Service:
         self.labels = [str(x) for x in blob["labels"]]
         self.texts = [str(x) for x in blob["texts"]]
 
-        from src.retriever import Embedder
-        self.embedder = Embedder(self.config["embed_model"])
+        # Prefer the traced encoder: it needs only torch and `tokenizers`, skipping the
+        # `transformers` import that measurement showed costs 215MB - more than the model
+        # itself. Falls back to the full path when the artifact is absent, so local
+        # development is unchanged.
+        from .light_embedder import get_serving_embedder
+        self.embedder, self.encoder_backend = get_serving_embedder(
+            ARTIFACTS, self.config["embed_model"])
+        log.info("encoder backend: %s", self.encoder_backend)
 
     def warm(self) -> float:
         """The first forward pass is materially slower than the thousandth. Serving
@@ -159,7 +166,8 @@ class Service:
             return round(samples[min(len(samples) - 1, int(len(samples) * p))], 3) \
                 if samples else 0.0
 
-        return {"requests": n, "abstentions": abstentions,
+        return {"encoder_backend": self.encoder_backend,
+                "requests": n, "abstentions": abstentions,
                 "abstention_rate": round(abstentions / n, 4) if n else 0.0,
                 "expected_coverage": self.config.get("expected_coverage"),
                 "p50_ms": pct(0.5), "p95_ms": pct(0.95), "p99_ms": pct(0.99),

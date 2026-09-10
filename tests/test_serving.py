@@ -116,6 +116,18 @@ def test_the_served_threshold_is_the_one_the_pipeline_derived(client):
     assert body["threshold"] == pytest.approx(config["abstain_threshold"], abs=1e-4)
 
 
+def test_the_deployed_encoder_is_the_traced_one(client):
+    """The image ships MiniLM as a TorchScript graph rather than a transformers
+    checkpoint - measurement put the `transformers` import at 215 MB, more than the model,
+    on an instance with 512 MB in total. If the service silently fell back to the full
+    path the numbers would be unchanged and the container would run out of memory under
+    concurrency instead, which is the failure that is hardest to read from a crash log."""
+    backend = client.get("/metrics").json()["service"]["encoder_backend"]
+    assert backend in {"traced", "transformers"}
+    if (ARTIFACTS / "encoder_traced.pt").exists():
+        assert backend == "traced", "traced artifact present but not used"
+
+
 def test_the_config_endpoint_states_why_the_LM_is_not_served(client):
     note = client.get("/config").json()["note"]
     assert "not on the serving path" in note or "deliberately not" in note

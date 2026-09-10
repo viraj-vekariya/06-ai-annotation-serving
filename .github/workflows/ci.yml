@@ -102,6 +102,55 @@ jobs:
             artifacts/serving.json
             outputs/results.json
 
+  encoder:
+    # The deployed image ships MiniLM as a TorchScript graph and drops `transformers`
+    # entirely, because measurement put that import at 215 MB on a 512 MB instance -
+    # more than the model. That is only safe if the traced graph is the same function.
+    # A drifted encoder would change every prediction while every other test still
+    # passed, so this job re-derives it and compares against the real model.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12", cache: pip}
+      - uses: actions/cache@v4
+        with: {path: ~/.cache/huggingface, key: hf-minilm-flant5-base-v1}
+      - run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install transformers tokenizers numpy
+      - run: python tools/export_encoder.py
+      - name: The traced encoder must be the same function as the checkpoint
+        run: |
+          python - <<'PY'
+          import pathlib, numpy as np
+          from serve.light_embedder import TracedEmbedder
+          from src.retriever import Embedder
+
+          texts = ["my card has not arrived", "how do I top up my account?",
+                   "I need to reset my pin", "why was I charged a fee",
+                   "asdfgh qwerty zxcvb", "the atm ate my card",
+                   "a much longer message about a transfer that has not arrived yet "
+                   "and which I would like someone to look into"]
+          traced = TracedEmbedder(pathlib.Path("artifacts"))
+          full = Embedder(traced.name)
+          diff = float(np.abs(traced.encode(texts) - full.encode(texts)).max())
+          print(f"max embedding difference: {diff:.3e}")
+          assert diff < 1e-5, f"the traced encoder drifted by {diff:.3e}"
+
+          # Batching must not change the answer either: the corpus is embedded in
+          # batches of 128 padded to the longest member, and if padding leaked into
+          # the pooled vector the index would differ from the query encoder.
+          one = traced.encode(texts)
+          traced.batch_size = 2
+          many = traced.encode(texts)
+          batched = float(np.abs(one - many).max())
+          print(f"max difference across batch sizes: {batched:.3e}")
+          # Observed 1.3e-07 locally - float32 accumulation order, not padding. A real
+          # leak shows up two or more orders of magnitude above this.
+          assert batched < 1e-5, "padding leaks into the pooled embedding"
+          print("the traced encoder is the checkpoint")
+          PY
+
   serving:
     runs-on: ubuntu-latest
     needs: [pipeline]

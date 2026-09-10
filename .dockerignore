@@ -1,0 +1,14 @@
+# The build regenerates every artifact from source, so none of these belong in the
+# context - artifacts/ alone is 105 MB and would be uploaded on every build.
+artifacts/*
+!artifacts/serving.json
+data/raw/
+docs/
+tests/
+.git/
+.github/
+__pycache__/
+*/__pycache__/
+.pytest_cache/
+*.pyc
+.DS_Store
