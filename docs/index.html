@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Annotation — does the LLM earn its cost?</title>
+<meta name="description" content="A four-arm ablation over 13,083 support messages that rejects the language model: the retriever alone wins, and fusion gives the LLM zero weight.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.2/babel.min.js"></script>
+<style>
+  :root{--bg:#0c0f14;--panel:#151a22;--panel2:#1d242e;--line:#2a333f;--text:#e8edf3;
+        --dim:#8c98a7;--accent:#5ac8a8;--ok:#3fb56f;--warn:#d8a13a;--bad:#e0574f;
+        --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+  .wrap{max-width:1160px;margin:0 auto;padding:24px 16px 70px}
+  header{border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:18px}
+  h1{font-size:23px;margin:0 0 6px;letter-spacing:-.02em}
+  .sub{color:var(--dim);font-size:13.5px;max-width:80ch}
+  .links{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .links a{color:var(--accent);text-decoration:none;font:600 12px var(--mono);
+    border:1px solid var(--line);padding:6px 11px;border-radius:7px}
+  .banner{background:linear-gradient(90deg,rgba(90,200,168,.10),transparent);
+    border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;
+    padding:14px 16px;margin-bottom:18px}
+  .banner b{color:var(--accent)}
+  .grid{display:grid;gap:14px}
+  .cards{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .two{grid-template-columns:1.1fr 1fr}
+  @media(max-width:900px){.two{grid-template-columns:1fr}}
+  .card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+  .card{padding:12px 14px}
+  .card .label{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  .card .value{font:600 20px/1.2 var(--mono);margin-top:5px}
+  .card .foot{color:var(--dim);font:11px var(--mono);margin-top:2px}
+  .panel{overflow:hidden;margin-top:14px}
+  .panel h2{font-size:12px;margin:0;padding:11px 14px;border-bottom:1px solid var(--line);
+    color:var(--dim);text-transform:uppercase;letter-spacing:.07em;font-weight:600}
+  .pad{padding:14px}
+  select,input[type=range]{font:13px var(--mono)}
+  select{padding:8px 10px;border-radius:7px;border:1px solid var(--line);
+         background:var(--panel2);color:var(--text);max-width:100%;width:100%}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  .verdict{font:700 21px/1.25 -apple-system,system-ui;letter-spacing:-.02em;margin-top:4px}
+  .v-accept{color:var(--ok)} .v-abstain{color:var(--warn)}
+  .reason{color:#c2ccd8;font-size:13px;margin-top:6px}
+  .bar{display:grid;grid-template-columns:200px 1fr 54px;gap:9px;align-items:center;
+       margin-bottom:5px;font:11px var(--mono)}
+  .bar .track{height:8px;background:#202833;border-radius:4px;overflow:hidden}
+  .bar .fill{height:100%;background:var(--accent);border-radius:4px}
+  .bar span:last-child{text-align:right;color:var(--dim)}
+  table{width:100%;border-collapse:collapse;font:12px var(--mono)}
+  th{background:var(--panel2);color:var(--dim);text-align:right;padding:7px 10px;
+     font-size:11px;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  td{padding:6px 10px;border-bottom:1px solid #1b222c;text-align:right}
+  tr.win td{background:rgba(63,181,111,.10)}
+  tr.dead td{color:#6c7683}
+  .nb{font:11px var(--mono);color:var(--dim);padding:4px 0;border-bottom:1px solid #1b222c}
+  .note{color:var(--dim);font-size:12.5px;padding:0 14px 14px;line-height:1.55;max-width:82ch}
+  code{font-family:var(--mono);background:var(--panel2);padding:1px 5px;border-radius:4px}
+  .good{color:var(--ok)} .bad{color:var(--bad)}
+</style>
+</head>
+<body>
+<div id="root"><div class="wrap"><p style="color:#8c98a7">loading…</p></div></div>
+<script type="text/babel">
+const {useState,useEffect,useMemo} = React;
+
+function App(){
+  const [d,setD]=useState(null); const [i,setI]=useState(0);
+  const [thr,setThr]=useState(null); const [err,setErr]=useState("");
+  useEffect(()=>{fetch("data.json").then(r=>r.json()).then(x=>{setD(x);
+    setThr(x.config.abstain_threshold);}).catch(e=>setErr(String(e)));},[]);
+  if(err) return <div className="wrap"><p className="bad">{err}</p></div>;
+  if(!d) return <div className="wrap"><p className="sub">loading…</p></div>;
+
+  const R=d.results, s=d.samples[i];
+  const conf=s.preds[0].p, abstain=conf<thr;
+  const curve=R.abstention.operating_curve;
+  const at=curve.reduce((b,r)=>Math.abs(r.threshold-thr)<Math.abs(b.threshold-thr)?r:b,curve[0]);
+  const arms=R.ablation.arms;
+
+  return <div className="wrap">
+    <header>
+      <h1>Does the LLM earn its cost?</h1>
+      <div className="sub">
+        A retrieval-plus-LLM annotation pipeline over <b>{R.data.total_rows.toLocaleString()} real
+        support messages</b> across <b>{R.data.labels} fine-grained intents</b>, with a four-arm
+        ablation, calibration, a derived abstention gate, distillation and a cost frontier.
+      </div>
+      <div className="links">
+        <a href="https://github.com/viraj-vekariya/06-ai-annotation-serving">source on GitHub</a>
+        <a href="https://github.com/viraj-vekariya/06-ai-annotation-serving/blob/main/DECISIONS.md">DECISIONS.md</a>
+        <a href="https://github.com/viraj-vekariya/06-ai-annotation-serving/blob/main/outputs/results.json">measured results</a>
+      </div>
+    </header>
+
+    <div className="banner">
+      <b>The finding:</b> the language model <b>does not earn its place</b>. The retriever
+      alone scores {arms[0].accuracy.toFixed(4)} against the LM's {arms[1].accuracy.toFixed(4)},
+      and the fusion sweep is monotone to <b>α = {R.ablation.alpha_sweep.best.alpha}</b> —
+      zero weight on the LLM. So it is not on the serving path, and not in the Docker image.
+    </div>
+
+    <div className="grid cards">
+      <div className="card"><div className="label">Retriever</div>
+        <div className="value good">{(arms[0].accuracy*100).toFixed(1)}%</div>
+        <div className="foot">no LLM at all</div></div>
+      <div className="card"><div className="label">LLM only</div>
+        <div className="value bad">{(arms[1].accuracy*100).toFixed(1)}%</div>
+        <div className="foot">{arms[1].lm_calls.toLocaleString()} forward passes</div></div>
+      <div className="card"><div className="label">Shortlist ceiling</div>
+        <div className="value">{R.retrieval.ceiling.recall_at_8}</div>
+        <div className="foot">recall@8, bounds everything</div></div>
+      <div className="card"><div className="label">ECE</div>
+        <div className="value">{R.calibration.ece_after}</div>
+        <div className="foot">from {R.calibration.ece_before}</div></div>
+      <div className="card"><div className="label">Auto-accepted</div>
+        <div className="value">{(R.abstention.chosen.coverage*100).toFixed(0)}%</div>
+        <div className="foot">at {(R.abstention.chosen.precision*100).toFixed(1)}% precision</div></div>
+      <div className="card"><div className="label">Cost / 1k</div>
+        <div className="value">${R.cost.options[0].total_cost_per_1k.toFixed(4)}</div>
+        <div className="foot">vs ${R.cost.human_cost_per_1k.toFixed(2)} human</div></div>
+    </div>
+
+    <div className="grid two">
+      <div className="panel">
+        <h2>Classify a real message</h2>
+        <div className="pad">
+          <select value={i} onChange={e=>setI(+e.target.value)}>
+            {d.samples.map((x,k)=><option key={k} value={k}>{x.text.slice(0,84)}</option>)}
+          </select>
+          <div className={"verdict "+(abstain?"v-abstain":"v-accept")} style={{marginTop:16}}>
+            {abstain ? "ABSTAIN → human review" : s.preds[0].label}
+          </div>
+          <div className="reason">
+            confidence {(conf*100).toFixed(1)}% against a {(thr*100).toFixed(1)}% threshold
+            {s.gold && <> · true label <b>{s.gold}</b>
+              {" "}<span className={s.preds[0].label===s.gold?"good":"bad"}>
+                ({s.preds[0].label===s.gold?"correct":"wrong"})</span></>}
+          </div>
+          <div style={{marginTop:12}}>{s.preds.map(p=>{
+            const max=s.preds[0].p||1;
+            return <div className="bar" key={p.label}>
+              <span>{p.label}</span>
+              <div className="track"><div className="fill" style={{width:(p.p/max*100)+"%"}}/></div>
+              <span>{(p.p*100).toFixed(1)}%</span></div>;})}
+          </div>
+          <div style={{marginTop:14}}>
+            <div style={{color:"var(--dim)",fontSize:11,textTransform:"uppercase",
+                         letterSpacing:".06em",marginBottom:6}}>
+              nearest training messages — this IS the explanation</div>
+            {s.neighbours.map((n,k)=>
+              <div className="nb" key={k}>{n.sim.toFixed(3)} · {n.label} · "{n.text}"</div>)}
+          </div>
+        </div>
+        <div className="note">These are real predictions from the actual pipeline on real
+          BANKING77 test messages, precomputed because the encoder cannot run in a browser.
+          Scroll to the bottom of the list for deliberately hard and nonsense inputs.</div>
+      </div>
+
+      <div>
+        <div className="panel" style={{marginTop:0}}>
+          <h2>Abstention threshold — move it</h2>
+          <div className="pad">
+            <input type="range" min="0" max="1" step="0.01" value={thr}
+                   onChange={e=>setThr(+e.target.value)}/>
+            <div style={{font:"12px var(--mono)",color:"var(--dim)",marginTop:8}}>
+              threshold {thr.toFixed(2)} · coverage {(at.coverage*100).toFixed(0)}%
+              {" "}· precision {(at.precision*100).toFixed(1)}%
+            </div>
+            <button style={{marginTop:12,font:"600 12px var(--mono)",padding:"8px 12px",
+                            borderRadius:6,border:"1px solid var(--line)",
+                            background:"var(--panel2)",color:"var(--text)",cursor:"pointer"}}
+              onClick={()=>setThr(d.config.abstain_threshold)}>reset to the derived threshold</button>
+          </div>
+          <div className="note">
+            The default was <b>derived</b>, not chosen: the lowest threshold achieving 95%
+            precision, which maximises coverage subject to that guarantee. Raise it and more
+            work goes to people; lower it and more errors ship.
+          </div>
+        </div>
+
+        <div className="panel">
+          <h2>Four-arm ablation</h2>
+          <div className="pad"><table>
+            <thead><tr><th>arm</th><th>accuracy</th><th>LM calls</th></tr></thead>
+            <tbody>{arms.map(a=>
+              <tr key={a.arm} className={a.arm==="A"?"win":""}>
+                <td>{a.arm} · {a.description.split("(")[0].trim().slice(0,26)}</td>
+                <td>{(a.accuracy*100).toFixed(2)}%{a.evaluated_on_full_test_set?"":"*"}</td>
+                <td>{a.lm_calls.toLocaleString()}</td></tr>)}
+            </tbody></table></div>
+          <div className="note">* arm D is scored on a subset; its prompts are ~3× longer.</div>
+        </div>
+      </div>
+    </div>
+
+    <div className="panel">
+      <h2>The fusion sweep — every increment of LLM weight makes it worse</h2>
+      <div className="pad"><table>
+        <thead><tr><th>α (weight on retriever)</th>
+          {R.ablation.alpha_sweep.sweep.map(r=><th key={r.alpha}>{r.alpha}</th>)}</tr></thead>
+        <tbody><tr><td>accuracy</td>
+          {R.ablation.alpha_sweep.sweep.map(r=>
+            <td key={r.alpha} className={r.alpha===1?"good":""}>{r.accuracy.toFixed(4)}</td>)}
+        </tr></tbody></table></div>
+      <div className="note">Monotone. α = 0 is the LLM alone; α = 1 is the retriever alone,
+        and it is the optimum. There is no mixture that beats simply discarding the LLM.</div>
+    </div>
+
+    <div className="panel">
+      <h2>Cost frontier — pay humans, or automate?</h2>
+      <div className="pad"><table>
+        <thead><tr><th>option</th><th>$/1k</th><th>accuracy</th><th>coverage</th>
+          <th>effective</th><th>status</th></tr></thead>
+        <tbody>{R.cost.options.map(o=>{
+          const dead=R.cost.dominated.includes(o.name);
+          return <tr key={o.name} className={dead?"dead":""}>
+            <td>{o.name}</td>
+            <td>{o.total_cost_per_1k<1?"$"+o.total_cost_per_1k.toFixed(4):"$"+o.total_cost_per_1k.toFixed(2)}</td>
+            <td>{(o.accuracy*100).toFixed(2)}%</td><td>{(o.coverage*100).toFixed(0)}%</td>
+            <td>{(o.effective_accuracy*100).toFixed(2)}%</td>
+            <td>{dead?"dominated":"on the frontier"}</td></tr>;})}
+        </tbody></table></div>
+      <div className="note">
+        Only three options are live. The LLM re-rank costs 40× the retriever and adds
+        nothing. The interesting part is what the frontier says about the shape of the
+        decision: automated inference is essentially free, so <b>cost is not the real trade —
+        accuracy is</b>. That is exactly why the gated option exists.
+      </div>
+    </div>
+
+    <div className="panel">
+      <h2>Distillation — the linear model beat the MLP</h2>
+      <div className="pad"><table>
+        <thead><tr><th>model</th><th>parameters</th><th>accuracy</th><th>vs teacher</th></tr></thead>
+        <tbody>
+          <tr><td>teacher (retriever)</td><td>22.7M + index</td>
+            <td>{R.distillation.teacher_accuracy}</td><td>—</td></tr>
+          <tr><td>neural student (MLP)</td>
+            <td>{R.distillation.neural_student.parameters.toLocaleString()}</td>
+            <td>{R.distillation.neural_student.student_accuracy}</td>
+            <td className="bad">{R.distillation.neural_student.gap.toFixed(4)}</td></tr>
+          <tr className="win"><td>linear student</td>
+            <td>{R.distillation.linear_student.parameters.toLocaleString()}</td>
+            <td>{R.distillation.linear_student.student_accuracy}</td>
+            <td>{R.distillation.linear_student.gap.toFixed(4)}</td></tr>
+        </tbody></table></div>
+      <div className="note">
+        A {R.distillation.linear_student.parameters.toLocaleString()}-parameter linear model
+        retains 98.9% of the teacher and <b>beats the MLP with 4× fewer parameters</b> — which
+        is exactly why the linear control was included. Without it, the MLP would have
+        shipped and the extra capacity would have looked necessary.
+      </div>
+    </div>
+  </div>;
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

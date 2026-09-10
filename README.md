@@ -1,5 +1,7 @@
 # AI Annotation & Served Inference
 
+**[▶ Live demo](https://viraj-vekariya.github.io/06-ai-annotation-serving/)** — real predictions on real test messages, with a live abstention-threshold slider.
+
 **Pay humans to label support tickets, or automate it?** A retrieval-plus-LLM annotation
 pipeline over **13,083 real customer-support messages across 77 intents**, with a four-arm
 ablation, calibration, a derived abstention gate, distillation, a cost frontier, and a
