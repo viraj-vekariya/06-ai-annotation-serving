@@ -91,13 +91,24 @@ def sweep_alpha(labels_list: Sequence[Sequence[str]],
         rows.append({"alpha": float(alpha),
                      "accuracy": round(hits / len(gold), 4) if gold else 0.0})
 
-    best = max(rows, key=lambda row: row["accuracy"])
+    # Break ties toward the HIGHER alpha, i.e. toward the retriever. Two settings that
+    # are equally accurate are not equally good: alpha=1.0 needs zero LLM forward passes
+    # while alpha=0.7 needs one per candidate per example. Python's max() returns the
+    # first maximum, which picked 0.7 over an exactly-equal 1.0 on a smaller sample and
+    # made the result look like the LLM was contributing when it was not.
+    best = max(rows, key=lambda row: (row["accuracy"], row["alpha"]))
     retriever_only = next(r for r in rows if r["alpha"] == 1.0)
     lm_only = next(r for r in rows if r["alpha"] == 0.0)
+
+    # How much the best mixture beats discarding the LLM entirely. This, not the argmax,
+    # is the quantity the project's claim rests on - the argmax can move between
+    # equally-accurate settings on any resample.
+    gain_over_discarding_lm = round(best["accuracy"] - retriever_only["accuracy"], 4)
 
     return {
         "sweep": rows,
         "best": best,
+        "gain_of_best_mixture_over_retriever_alone": gain_over_discarding_lm,
         "retriever_only": retriever_only,
         "lm_only": lm_only,
         "fusion_beats_retriever": best["accuracy"] > retriever_only["accuracy"],

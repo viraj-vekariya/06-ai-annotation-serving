@@ -1,7 +1,7 @@
 {
   "project": "AI Annotation & Served Inference",
   "role": "CV2 / Data Science + Business Analytics - applied ML and MLOps",
-  "generated_at": "2026-09-10T07:50:12",
+  "generated_at": "2026-09-10T09:04:18",
   "data": {
     "train_rows": 10003,
     "test_rows": 3080,
@@ -49,7 +49,7 @@
         "accuracy": 0.604,
         "n": 1500,
         "lm_calls": 4036,
-        "seconds": 74.6,
+        "seconds": 68.0,
         "evaluated_on_full_test_set": true
       },
       {
@@ -58,7 +58,7 @@
         "accuracy": 0.892,
         "n": 1500,
         "lm_calls": 4036,
-        "seconds": 74.9,
+        "seconds": 68.3,
         "evaluated_on_full_test_set": true
       },
       {
@@ -67,7 +67,7 @@
         "accuracy": 0.8967,
         "n": 300,
         "lm_calls": 703,
-        "seconds": 19.3,
+        "seconds": 19.0,
         "evaluated_on_full_test_set": false
       }
     ],
@@ -122,6 +122,7 @@
         "alpha": 1.0,
         "accuracy": 0.892
       },
+      "gain_of_best_mixture_over_retriever_alone": 0.0,
       "retriever_only": {
         "alpha": 1.0,
         "accuracy": 0.892
@@ -452,7 +453,7 @@
       "beats_teacher": false,
       "gap": -0.01,
       "epochs": 40,
-      "seconds": 0.8
+      "seconds": 0.7
     },
     "mlp_beats_linear": false,
     "best_student": "multinomial logistic regression",
@@ -628,6 +629,6 @@
       }
     }
   },
-  "tests": "45 passed in 6.06s",
-  "seconds": 75.9
+  "tests": "45 passed in 6.26s",
+  "seconds": 143.2
 }

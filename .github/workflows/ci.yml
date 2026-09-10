@@ -59,8 +59,18 @@ jobs:
           assert arms["A"] > arms["B"] + 0.15, \
               f"the LM ({arms['B']}) closed the gap on the retriever ({arms['A']})"
 
-          # Fusion puts (almost) all weight on the retriever - the LM adds nothing.
-          assert r["ablation"]["alpha_sweep"]["best"]["alpha"] >= 0.9
+          # THE CLAIM IS THAT THE LM ADDS NOTHING - not that the argmax lands on a
+          # particular alpha. Those are different assertions, and only the first is
+          # robust: at 400 test rows alpha 0.7 and alpha 1.0 tied at exactly 0.9100,
+          # and max() returning the first one made a gate on "alpha >= 0.9" fail on a
+          # run where the LM contributed literally zero.
+          sweep = r["ablation"]["alpha_sweep"]
+          gain = sweep["gain_of_best_mixture_over_retriever_alone"]
+          print(f"best alpha {sweep['best']['alpha']}, "
+                f"gain of the best mixture over discarding the LM: {gain:+.4f}")
+          assert gain <= 0.01, \
+              f"the best mixture now beats the retriever alone by {gain:+.4f} - the LM " \
+              f"may be earning its place, which would invert the project's finding"
 
           # The shortlist ceiling bounds everything downstream.
           assert r["retrieval"]["ceiling"]["recall_at_8"] > 0.95
